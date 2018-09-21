@@ -12,6 +12,10 @@ import Dashen from '../dashen/dashen'
 import Message from '../message/message'
 import Personal from '../personal/personal'
 import {connect} from 'react-redux'
+import {getRedirectPath} from '../../utils'
+
+import {getUser} from '../../redux/actions'
+import Chat from '../chat/chat';
 
 
 /*
@@ -51,20 +55,52 @@ class Main extends Component {
     }
   ]
 
+  //在render中不能发送请求
+
+  componentDidMount(){
+    //判断是否有useid
+    const userid = Cookies.get('userid')
+    const {_id} = this.props.user
+
+    if(userid&&!_id) {
+      //发送请求
+      this.props.getUser()
+    }
+
+    //判断redux中的user是不是没有数据
+
+  }
 
 
   render () {
-    //通过cookie中是否存在userid判断是否登录
+    // 1. 判断cookie中是否有userid, 如果没有, 自动跳转到登陆界面
     const userid = Cookies.get('userid')
+
+
     if(!userid) {
       return <Redirect to='/login'/>
     }
-    
+
+   // 2. cookie中有userid(登陆过), 看redux中的user有没有信息, 如果没有(还没有登陆), 发异步请求获取user信息并保存到redux
+    const {user} = this.props
+    if(!user._id){
+      return <div>Loading........</div>
+    }
+
+
+    // 3. 如果redux的user中已经有信息(已经登陆), 如果请求的是应用根路径, 自动跳转到对应的主界面
+
+    const path = this.props.location.pathname
+
+    if(path==='/'){
+      return <Redirect to={getRedirectPath(user.type,user.header)}/>
+    }
+
+
     //拿到组件实例对象上的navlist
     const navList = this.navList
     
-    //拿到当前请求的path，
-    const path = this.props.location.pathname
+
     
     //navList数组中存在许多的nav对象
     //找到当前的nav
@@ -94,7 +130,11 @@ class Main extends Component {
          <Route path='/message' component={Message}/>
          <Route path='/personal' component={Personal}/>
 
-       </Switch>                       {/*
+         {/*//chat路由*/}
+         <Route path='/chat/:userid' component={Chat}/>
+
+       </Switch>
+       {/*
        把数据通过标签属性传递给子组件*/}
        {currentNav? <NavFooter navList = {this.navList}/>:null}
      </div>
@@ -104,5 +144,5 @@ class Main extends Component {
 
 export default connect(
   state =>({user:state.user}),
-{}
+{getUser}
 )(Main)
